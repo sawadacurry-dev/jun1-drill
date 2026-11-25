@@ -27,6 +27,7 @@
     document.querySelectorAll('.view').forEach((v) => v.classList.add('hidden'));
     $('view-' + name).classList.remove('hidden');
     window.scrollTo(0, 0);
+    if (name === 'quiz') fitViewport();
     if (name === 'home') renderHome();
     if (name === 'stats') renderStats();
     if (name === 'settings') renderSettings();
@@ -154,6 +155,7 @@
     $('btn-hint').disabled = false;
     const inp = $('q-input');
     inp.value = '';
+    $('quiz-scroll').scrollTop = 0;
     lastLen = 0;
     inp.readOnly = false;
     inp.className = inp.className.replace(/\b(ok|ng)\b/g, '').trim();
@@ -254,16 +256,44 @@
   });
   document.querySelector('[data-go=settings]').addEventListener('click', () => { settingsFrom = 'home'; });
 
-  // スマホでキーボードが出たとき、下のボタン列をキーボードのすぐ上に置く
-  if (window.visualViewport) {
-    const fit = () => {
-      const vv = window.visualViewport;
-      const off = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      document.documentElement.style.setProperty('--kb', off + 'px');
-    };
-    window.visualViewport.addEventListener('resize', fit);
-    window.visualViewport.addEventListener('scroll', fit);
+  // スマホでキーボードが出たとき：出題画面を「見えている範囲」にぴったり合わせる
+  // （iPhone の Safari はキーボードで画面全体をずらすので、その位置と高さを追いかける）
+  const root = document.documentElement;
+  let fullH = window.innerHeight;
+  function fitViewport() {
+    const vv = window.visualViewport;
+    const h = vv ? vv.height : window.innerHeight;
+    const top = vv ? vv.offsetTop : 0;
+    fullH = Math.max(fullH, window.innerHeight, h);
+    root.style.setProperty('--vvh', h + 'px');
+    root.style.setProperty('--vvt', top + 'px');
+    const kb = fullH - h > 150; // 150px 以上縮んだらキーボードが出ている
+    root.classList.toggle('kb-open', kb);
+    if (!$('view-quiz').classList.contains('hidden')) {
+      // 出題中は後ろのページがずれないように固定
+      if (window.scrollY !== 0 && !vv) window.scrollTo(0, 0);
+      keepInputVisible();
+    }
   }
+  function keepInputVisible() {
+    const sc = $('quiz-scroll');
+    const target = !$('q-result').classList.contains('hidden') ? $('q-result') : $('q-input');
+    const r = target.getBoundingClientRect(), s = sc.getBoundingClientRect();
+    if (r.bottom > s.bottom - 8) sc.scrollTop += r.bottom - s.bottom + 12;
+    else if (r.top < s.top + 8) sc.scrollTop -= s.top - r.top + 12;
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitViewport);
+    window.visualViewport.addEventListener('scroll', fitViewport);
+  }
+  window.addEventListener('resize', fitViewport);
+  window.addEventListener('orientationchange', () => { fullH = 0; setTimeout(fitViewport, 300); });
+  fitViewport();
+  // 出題中に後ろのページがスクロールしてしまうのを防ぐ（iPhone 対策）
+  document.addEventListener('touchmove', (e) => {
+    if ($('view-quiz').classList.contains('hidden')) return;
+    if (!e.target.closest('#quiz-scroll')) e.preventDefault();
+  }, { passive: false });
 
   $('btn-giveup').addEventListener('click', () => {
     if (!cur || cur.answered) return;
@@ -313,6 +343,7 @@
     $('r-word').innerHTML = '<b>' + esc(w.word) + '</b>　' + esc(w.meaning);
     $('r-next').textContent = nextText;
     $('q-result').classList.remove('hidden');
+    requestAnimationFrame(keepInputVisible);
     $('q-bar').style.width = (100 * session.pos) / session.queue.length + '%';
     $('q-len').textContent = session.queue.length;
     $('q-pos').textContent = session.pos;
@@ -608,6 +639,12 @@
     save(K.cards, cards); save(K.log, log); save(K.session, null);
     show('home');
   });
+
+  // ---------- ホーム画面に追加の案内（iPhone の Safari で開いているときだけ） ----------
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !standalone && !localStorage.getItem('jun1.a2hsClosed')) $('a2hs').classList.remove('hidden');
+  $('a2hs-close').addEventListener('click', () => { $('a2hs').classList.add('hidden'); localStorage.setItem('jun1.a2hsClosed', '1'); });
 
   // ---------- オフライン対応 ----------
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {

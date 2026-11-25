@@ -2,9 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#a9d2f8">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="準一級単語">
 <title>準一級 単語ドリル</title>
 <link rel="manifest" href="manifest.json">
@@ -17,6 +19,17 @@
   <!-- ホーム -->
   <section id="view-home" class="view">
     <header class="top"><h1>準一級 単語ドリル</h1></header>
+    <div id="a2hs" class="card a2hs hidden">
+      <button id="a2hs-close" class="a2hs-close" aria-label="閉じる">×</button>
+      <b>ホーム画面に追加すると、アプリのように使えます</b>
+      <ol>
+        <li>画面下の <span class="share-ico" aria-label="共有">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v12M8 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 11H5v10h14V11h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>（共有）を押す</li>
+        <li>下にスクロールして「ホーム画面に追加」を押す</li>
+        <li>ホーム画面のアイコンから開く</li>
+      </ol>
+      <p class="note">アイコンから開くとアドレスバーが消えて画面が広くなり、キーボードも使いやすくなります。※Safariとホーム画面のアプリでは学習記録が別々に保存されます。</p>
+    </div>
     <div class="card">
       <div class="today-label">今日の問題</div>
       <div class="today-count"><span id="home-total">0</span><small>問</small></div>
@@ -42,6 +55,7 @@
 
   <!-- 出題 -->
   <section id="view-quiz" class="view hidden">
+    <div id="quiz-scroll" class="quiz-scroll">
     <header class="quiz-top">
       <button id="btn-quit" class="icon-btn" aria-label="中断">
         <svg viewBox="0 0 24 24" width="28" height="28"><path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -82,6 +96,8 @@
         <button id="btn-speak" class="secondary">🔊 もう一度聞く</button>
         <button id="btn-next" class="primary">次へ</button>
       </div>
+    </div>
+
     </div>
 
     <div id="q-toolbar" class="qtoolbar">

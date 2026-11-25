@@ -49,7 +49,13 @@ button:disabled { opacity: .4; cursor: default; }
 .mini-row small { display: block; font-size: 12px; color: var(--sub); font-weight: 400; }
 
 /* ---------- 出題 ---------- */
-#view-quiz { padding-bottom: calc(90px + var(--kb)); }
+/* 出題画面は「いま見えている範囲」（キーボードを除いた部分）にぴったり合わせた固定パネルにする。
+   iPhone の Safari ではキーボードが出ると画面全体がずれるため、見えている範囲を JS で測って追従させる */
+#view-quiz { position: fixed; left: 0; right: 0; top: var(--vvt, 0px); height: var(--vvh, 100dvh);
+  display: flex; flex-direction: column; z-index: 5; }
+#view-quiz.hidden { display: none !important; }
+.quiz-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  width: 100%; max-width: 560px; margin: 0 auto; padding: max(10px, env(safe-area-inset-top)) 16px 16px; }
 .quiz-top { display: flex; align-items: center; gap: 8px; margin: 4px 0 26px; }
 .icon-btn { background: none; padding: 4px; color: #fff; display: flex; filter: drop-shadow(0 1px 2px rgba(0,0,0,.08)); }
 .qprog { flex: 1; display: flex; align-items: center; position: relative; }
@@ -85,8 +91,10 @@ button:disabled { opacity: .4; cursor: default; }
 .shake { animation: shake .3s; }
 @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 
-.qtoolbar { position: fixed; left: 0; right: 0; bottom: var(--kb); display: flex; background: #fff;
-  border-top: 1px solid #e6edf5; padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)); z-index: 10; }
+.qtoolbar { flex: none; width: 100%; display: flex; background: #fff;
+  border-top: 1px solid #e6edf5; padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)); }
+/* キーボードが出ている間は、下の安全領域の余白は不要 */
+.kb-open .qtoolbar { padding-bottom: 6px; }
 .qtoolbar .tool { flex: 1; background: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px;
   color: var(--accent); font-size: 13px; font-weight: 700; border-radius: 0; }
 .qtoolbar .tool + .tool { border-left: 1px solid #edf1f6; }
@@ -146,3 +154,29 @@ button:disabled { opacity: .4; cursor: default; }
 .curve .now { fill: var(--pri); }
 .curve .due { fill: #fff; stroke: #e0574a; stroke-width: 2.5; }
 .curve-note { font-size: 12px; color: var(--sub); line-height: 1.6; margin-top: 6px; }
+
+/* キーボードが出ていて画面が狭いときは詰めて表示する */
+.kb-open .quiz-top { margin: 0 0 10px; }
+.kb-open .trophy { width: 36px; height: 36px; }
+.kb-open .trophy svg { width: 20px; height: 20px; }
+.kb-open .qbar { height: 12px; }
+.kb-open .qcard-wrap { padding-top: 22px; }
+.kb-open .qtab { padding: 4px 14px 12px; font-size: 12px; }
+.kb-open .qja { padding: 16px 18px 8px; min-height: 0; }
+.kb-open .ja { font-size: 16px; line-height: 1.6; }
+.kb-open .qhint { margin-top: 4px; }
+.kb-open .qen { padding: 14px 18px 10px; min-height: 0; }
+.kb-open .en { font-size: 21px; line-height: 1.75; }
+.kb-open .measure { font-size: 21px; }
+.kb-open .feedback { margin-top: 4px; min-height: 18px; }
+.kb-open .qtoolbar .tool { flex-direction: row; justify-content: center; gap: 6px; padding: 4px; }
+.kb-open .tool-icon { width: 26px; height: 26px; font-size: 15px; }
+.kb-open .qtoolbar small { display: none; }
+
+/* ホーム画面に追加の案内 */
+.a2hs { position: relative; border: 2px solid #cfe3fb; }
+.a2hs b { display: block; margin-bottom: 8px; color: #24508a; padding-right: 24px; }
+.a2hs ol { margin: 0 0 8px; padding-left: 22px; line-height: 1.9; font-size: 14px; }
+.a2hs .note { margin: 0; font-size: 12px; }
+.share-ico { display: inline-flex; vertical-align: -3px; color: var(--pri); }
+.a2hs-close { position: absolute; top: 8px; right: 8px; background: none; color: var(--sub); font-size: 20px; padding: 4px 10px; }
