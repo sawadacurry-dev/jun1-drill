@@ -1,0 +1,40 @@
+# 毎日20時（日本時間）ごろに、登録した端末へ「今日の問題」の通知を送る
+# ※ GitHub の混雑状況により、数分〜数十分遅れることがあります
+name: Daily reminder
+
+on:
+  schedule:
+    - cron: "0 11 * * *"   # 11:00 UTC = 20:00 JST
+  workflow_dispatch:        # 手動でもすぐ送れる（動作確認用）
+
+permissions:
+  contents: write           # 下の「休止防止」のためだけに使う
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm install --no-save --no-package-lock web-push@4
+      - run: node tools/send-push.js
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          PUSH_SUBSCRIPTIONS: ${{ secrets.PUSH_SUBSCRIPTIONS }}
+
+      # GitHub は60日間更新のないリポジトリの定期実行を止めてしまうので、
+      # 最後の更新から50日たったら空の記録を1つ追加して止まらないようにする
+      - name: Keep schedule alive
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -ge 50 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "定期通知を止めないための自動更新"
+            git push
+          fi

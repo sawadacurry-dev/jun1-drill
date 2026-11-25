@@ -167,6 +167,17 @@
       <p id="voice-note" class="note"></p>
       <button id="btn-test-voice" class="secondary">🔊 試しに聞く</button>
     </div>
+    <div class="card form" id="push-card">
+      <h3>毎日の通知</h3>
+      <p class="note" id="push-status"></p>
+      <button id="btn-push-on" class="primary hidden">通知をオンにする</button>
+      <div id="push-code-wrap" class="hidden">
+        <p class="note">最初の1回だけ、下のコードをコピーして Claude に送ってください。届いたら毎日の通知が始まります。</p>
+        <textarea id="push-code" class="push-code" readonly rows="4"></textarea>
+        <button id="btn-push-copy" class="secondary">コードをコピー</button>
+      </div>
+      <button id="btn-push-test" class="secondary hidden">この端末で通知を試す</button>
+    </div>
     <div class="card form">
       <h3>データの保存</h3>
       <p class="note">学習記録はこの端末のブラウザに保存されています。機種変更やブラウザのデータ削除に備えて、ときどき書き出しておいてください。</p>
@@ -178,6 +189,7 @@
 </div>
 <script src="words.js"></script>
 <script src="srs.js"></script>
+<script src="push-config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

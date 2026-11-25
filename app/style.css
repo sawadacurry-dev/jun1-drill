@@ -180,3 +180,7 @@ button:disabled { opacity: .4; cursor: default; }
 .a2hs .note { margin: 0; font-size: 12px; }
 .share-ico { display: inline-flex; vertical-align: -3px; color: var(--pri); }
 .a2hs-close { position: absolute; top: 8px; right: 8px; background: none; color: var(--sub); font-size: 20px; padding: 4px 10px; }
+
+/* 通知の設定 */
+.push-code { width: 100%; font-family: Consolas, "SF Mono", monospace; font-size: 11px; padding: 8px; border: 1.5px solid var(--line); border-radius: 10px; resize: none; margin-bottom: 10px; color: var(--sub); }
+#btn-push-on { width: 100%; margin-bottom: 10px; }

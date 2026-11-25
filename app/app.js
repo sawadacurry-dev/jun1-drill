@@ -11,7 +11,7 @@
   const BY_NO = new Map(WORDS.map((w) => [w.no, w]));
 
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
-  const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  const save = (k, v) => { localStorage.setItem(k, JSON.stringify(v)); scheduleSummary(); };
 
   let cards = load(K.cards, {});
   let settings = Object.assign({}, DEFAULT_SETTINGS, load(K.settings, {}));
@@ -646,10 +646,100 @@
   if (isIOS && !standalone && !localStorage.getItem('jun1.a2hsClosed')) $('a2hs').classList.remove('hidden');
   $('a2hs-close').addEventListener('click', () => { $('a2hs').classList.add('hidden'); localStorage.setItem('jun1.a2hsClosed', '1'); });
 
+  // ---------- 毎日の通知 ----------
+  // 通知が届いたとき、Service Worker が「今日の問題数」を計算できるように、要約を IndexedDB に置いておく
+  function idbPut(key, value) {
+    return new Promise((resolve) => {
+      if (!('indexedDB' in window)) return resolve();
+      const req = indexedDB.open('jun1', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => {
+        const tx = req.result.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(value, key);
+        tx.oncomplete = () => { req.result.close(); resolve(); };
+        tx.onerror = () => resolve();
+      };
+      req.onerror = () => resolve();
+    });
+  }
+  let summaryTimer = null;
+  function scheduleSummary() {
+    clearTimeout(summaryTimer);
+    summaryTimer = setTimeout(writeSummary, 300);
+  }
+  function writeSummary() {
+    const vals = Object.values(cards);
+    const s = session || {};
+    idbPut('summary', {
+      daily: settings.daily,
+      dues: vals.map((c) => c.due).filter(Boolean),
+      unseen: WORDS.length - vals.length,
+      session: s.date ? { date: s.date, total: (s.queue || []).length, pos: s.pos || 0 } : null,
+      updated: Date.now(),
+    });
+  }
+
+  const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  function b64urlToBytes(s) {
+    const pad = '='.repeat((4 - (s.length % 4)) % 4);
+    const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  }
+  async function renderPush() {
+    const st = $('push-status');
+    const show = (id, on) => $(id).classList.toggle('hidden', !on);
+    show('btn-push-on', false); show('push-code-wrap', false); show('btn-push-test', false);
+    if (!pushSupported || !window.isSecureContext) {
+      st.textContent = isIOS && !standalone
+        ? 'iPhone では、ホーム画面に追加したアイコンから開いたときだけ通知を設定できます（iOS 16.4 以降）。'
+        : 'このブラウザでは通知を使えません。';
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      st.textContent = '通知が拒否されています。iPhone の「設定 → 通知 → 準一級単語」で通知をオンにしてください。';
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      st.textContent = '毎日20時ごろに「今日の問題」が何問あるかをお知らせします。';
+      show('btn-push-on', true);
+      return;
+    }
+    st.textContent = '通知はオンです（毎日20時ごろ）。';
+    $('push-code').value = JSON.stringify(sub.toJSON());
+    show('push-code-wrap', !localStorage.getItem('jun1.pushSent'));
+    show('btn-push-test', true);
+  }
+  $('btn-push-on').addEventListener('click', async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { renderPush(); return; }
+      const reg = await navigator.serviceWorker.ready;
+      await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(window.PUSH_CONFIG.vapidPublicKey) });
+      writeSummary();
+      renderPush();
+    } catch (err) { alert('通知をオンにできませんでした: ' + err.message); }
+  });
+  $('btn-push-copy').addEventListener('click', async () => {
+    const t = $('push-code');
+    try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); }
+    toast('コピーしました。Claude に貼り付けて送ってください。');
+    localStorage.setItem('jun1.pushSent', '1');
+  });
+  $('btn-push-test').addEventListener('click', async () => {
+    writeSummary();
+    const reg = await navigator.serviceWorker.ready;
+    if (reg.active) reg.active.postMessage({ type: 'test-notification' });
+  });
+  document.querySelector('[data-go=settings]').addEventListener('click', renderPush);
+  $('btn-q-settings').addEventListener('click', renderPush);
+
   // ---------- オフライン対応 ----------
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
   show('home');
+  writeSummary();
 })();
