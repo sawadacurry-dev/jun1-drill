@@ -38,19 +38,54 @@
       <button id="btn-start" class="primary big">スタート</button>
       <button id="btn-more" class="secondary hidden">もう10問やる</button>
     </div>
+    <div class="card tree-card">
+      <div class="tree-head"><b id="tree-stage">芽</b><span id="tree-sub" class="note"></span></div>
+      <div id="tree" class="tree"></div>
+      <div id="tree-note" class="tree-note"></div>
+    </div>
     <div class="card stats-mini">
       <div class="progress-label">習得状況 <span id="home-learned">0</span> / <span id="home-all">0</span> 語</div>
       <div class="bar"><div id="home-bar"></div></div>
       <div class="mini-row">
-        <div><span id="home-streak">0</span><small>日連続</small></div>
+        <div><span id="home-remember">0</span><small>覚えている語（予測）</small></div>
         <div><span id="home-due-tomorrow">0</span><small>明日の復習</small></div>
-        <div><span id="home-weak">0</span><small>苦手</small></div>
+        <div><span id="home-badges">0</span><small>称号</small></div>
       </div>
     </div>
+    <div id="pace-card" class="card pace-card"></div>
     <nav class="nav">
-      <button data-go="stats" class="secondary">記録・苦手単語</button>
+      <button data-go="zukan" class="secondary">📖 単語図鑑</button>
+      <button data-go="stats" class="secondary">🏅 記録・称号</button>
+    </nav>
+    <nav class="nav nav2">
+      <button id="btn-share" class="secondary">友達に教える</button>
       <button data-go="settings" class="secondary">設定</button>
     </nav>
+  </section>
+
+  <!-- 単語図鑑 -->
+  <section id="view-zukan" class="view hidden">
+    <header class="top"><button data-go="home" class="link">← 戻る</button><h2>単語図鑑</h2></header>
+    <div class="card">
+      <div id="zk-summary" class="zk-summary"></div>
+      <div class="zk-legend">
+        <span><i class="lv0"></i>未学習</span><span><i class="lv1"></i>覚えたて</span><span><i class="lv2"></i></span><span><i class="lv3"></i></span><span><i class="lv4"></i></span><span><i class="lv5"></i>定着</span>
+      </div>
+      <p class="note">色が濃いほど記憶が強い単語です。時間がたって忘れかけると色があせます。</p>
+      <div class="zk-filters">
+        <button class="chip on" data-filter="all">すべて</button>
+        <button class="chip" data-filter="fading">忘れかけ</button>
+        <button class="chip" data-filter="weak">苦手</button>
+        <button class="chip" data-filter="learned">定着</button>
+      </div>
+    </div>
+    <div id="zk-grid" class="zk-grid"></div>
+    <div id="zk-sheet" class="sheet hidden">
+      <div class="sheet-inner">
+        <button id="zk-close" class="a2hs-close" aria-label="閉じる">×</button>
+        <div id="zk-detail"></div>
+      </div>
+    </div>
   </section>
 
   <!-- 出題 -->
@@ -132,6 +167,11 @@
     <div class="card">
       <div class="grid2" id="s-grid"></div>
     </div>
+    <div id="s-pace" class="card pace-card"></div>
+    <div class="card">
+      <h3>称号</h3>
+      <div id="s-badges" class="badges"></div>
+    </div>
     <div class="card">
       <h3>今後7日間の復習予定</h3>
       <div id="s-forecast" class="forecast"></div>
@@ -149,6 +189,9 @@
     <div class="card form">
       <label>1日の問題数
         <input id="set-daily" type="number" min="1" max="200" step="1">
+      </label>
+      <label>試験日（合格までのペース予測に使います）
+        <input id="set-exam" type="date">
       </label>
       <label>新しい単語の出し方
         <select id="set-order">
@@ -170,13 +213,12 @@
     <div class="card form" id="push-card">
       <h3>毎日の通知</h3>
       <p class="note" id="push-status"></p>
+      <label id="push-hour-wrap" class="hidden">通知する時刻
+        <select id="set-push-hour"></select>
+      </label>
       <button id="btn-push-on" class="primary hidden">通知をオンにする</button>
-      <div id="push-code-wrap" class="hidden">
-        <p class="note">最初の1回だけ、下のコードをコピーして Claude に送ってください。届いたら毎日の通知が始まります。</p>
-        <textarea id="push-code" class="push-code" readonly rows="4"></textarea>
-        <button id="btn-push-copy" class="secondary">コードをコピー</button>
-      </div>
       <button id="btn-push-test" class="secondary hidden">この端末で通知を試す</button>
+      <button id="btn-push-off" class="secondary danger hidden">通知をオフにする</button>
     </div>
     <div class="card form">
       <h3>データの保存</h3>

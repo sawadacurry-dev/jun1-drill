@@ -1,5 +1,5 @@
 // オフラインでも開けるようにファイルを保存しておく ＋ 毎日の通知を表示する
-const CACHE = 'jun1-drill-v8';
+const CACHE = 'jun1-drill-v9';
 const FILES = ['./', './index.html', './style.css', './app.js', './srs.js', './push-config.js', './words.js', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {

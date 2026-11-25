@@ -1,2 +1,5 @@
-// 通知用の公開鍵（秘密鍵は GitHub の Secrets にだけ保存）
-window.PUSH_CONFIG = { vapidPublicKey: 'BKQ5KIN6eTf8JfKsgsmMzaE7_fARvXFTHMLeAeQnk600pDgzYoj6L2ZWkHNKVwLQd7vC78t48vBfo7X2ZnJAaCQ' };
+// 通知の設定（公開鍵とサーバーのURL。秘密鍵はサーバー側にだけ保存）
+window.PUSH_CONFIG = {
+  vapidPublicKey: 'BCb7wUmC5Ap4rJ6N4iwCkV4SIcmD3Z-ylcipN07U5tAyBwAWkTj2wEHiqMxkjPVMsAymm0-Rl2zWWOYO3K40OpU',
+  serverUrl: '',
+};

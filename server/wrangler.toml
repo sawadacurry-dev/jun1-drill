@@ -1,0 +1,16 @@
+# 準一級 単語ドリル 通知サーバー
+name = "jun1-drill-push"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+# 毎時0分に、その時刻（日本時間）を選んだ端末へ通知を送る
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+VAPID_PUBLIC_KEY = "BCb7wUmC5Ap4rJ6N4iwCkV4SIcmD3Z-ylcipN07U5tAyBwAWkTj2wEHiqMxkjPVMsAymm0-Rl2zWWOYO3K40OpU"
+
+# 端末の登録情報の保存先
+[[kv_namespaces]]
+binding = "SUBS"
+id = "d39e1babbb6643dd95faa81cd978bb9b"

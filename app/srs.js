@@ -83,6 +83,7 @@
     if (isNew) {
       // 初めて：学習直後から急に忘れるので、どの評価でも翌日に1回目の復習
       S2 = 1;
+      c.first = today;
       if (grade === 5) c.ease = 2.6;
       else if (grade <= 2) c.ease = 2.2;
       if (grade === 1) c.lapses += 1;

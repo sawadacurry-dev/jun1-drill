@@ -1,7 +1,7 @@
 (function () {
   'use strict';
-  const K = { cards: 'jun1.cards', settings: 'jun1.settings', session: 'jun1.session', log: 'jun1.log' };
-  const DEFAULT_SETTINGS = { daily: 20, order: 'seq', autoSpeak: true, rate: 0.9, voice: '', sound: true };
+  const K = { cards: 'jun1.cards', settings: 'jun1.settings', session: 'jun1.session', log: 'jun1.log', meta: 'jun1.meta', badges: 'jun1.badges' };
+  const DEFAULT_SETTINGS = { daily: 20, order: 'seq', autoSpeak: true, rate: 0.9, voice: '', sound: true, exam: '', pushHour: 20 };
 
   // ---------- データ ----------
   const WORDS = (window.WORDS || []).map((w) => {
@@ -17,6 +17,8 @@
   let settings = Object.assign({}, DEFAULT_SETTINGS, load(K.settings, {}));
   let session = load(K.session, null);
   let log = load(K.log, {});
+  let meta = Object.assign({ answers: 0, perfects: 0, recovered: 0, run: 0, bestRun: 0 }, load(K.meta, {}));
+  let unlocked = load(K.badges, {});
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -30,6 +32,7 @@
     if (name === 'quiz') fitViewport();
     if (name === 'home') renderHome();
     if (name === 'stats') renderStats();
+    if (name === 'zukan') { $('zk-sheet').classList.add('hidden'); renderZukan(); }
     if (name === 'settings') renderSettings();
   }
   document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)));
@@ -94,22 +97,133 @@
     $('home-learned').textContent = learned;
     $('home-all').textContent = WORDS.length;
     $('home-bar').style.width = (WORDS.length ? (100 * learned) / WORDS.length : 0) + '%';
-    $('home-streak').textContent = streak();
     const tm = SRS.addDays(today(), 1);
     $('home-due-tomorrow').textContent = vals.filter((c) => c.due && c.due <= tm).length - dueTodayAfterSession();
-    $('home-weak').textContent = vals.filter(SRS.isWeak).length;
+    $('home-remember').textContent = Math.round(rememberedCount());
+    $('home-badges').textContent = Object.keys(unlocked).length;
+    renderTree();
+    $('pace-card').innerHTML = paceHtml(true);
   }
   function dueTodayAfterSession() {
     // 「明日の復習」から、今日のセッションでこれから解く復習（今日中に片付く分）を除く
     const rest = new Set(session.queue.slice(session.pos).filter((q) => q.kind === 'review' && !q.retry).map((q) => q.no));
     return rest.size;
   }
-  function streak() {
-    let n = 0; let d = today();
-    if (!log[d]) d = SRS.addDays(d, -1);
-    while (log[d]) { n++; d = SRS.addDays(d, -1); }
-    return n;
+  // 今「覚えている」と予測される単語数（各単語の記憶率の合計）
+  function rememberedCount() {
+    const t = today();
+    return Object.values(cards).reduce((s, c) => s + (SRS.retention(c, t) || 0), 0);
   }
+
+  // ---------- 記憶の木 ----------
+  // 覚えている単語（予測）が葉になる。忘れかけの単語は色あせた葉になり、復習すると緑に戻る
+  const TREE_STAGES = [
+    [0, '芽', '最初の単語を覚えると芽が出ます'],
+    [5, '双葉', ''],
+    [30, '苗木', ''],
+    [100, '若木', ''],
+    [300, '木', ''],
+    [700, '大きな木', ''],
+    [1200, '大樹', ''],
+    [1600, '記憶の大樹', ''],
+  ];
+  function seeded(i) { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+  function renderTree() {
+    const t = today();
+    const vals = Object.values(cards);
+    const rem = rememberedCount();
+    const fading = vals.filter((c) => (SRS.retention(c, t) || 1) < 0.85).length;
+    let stage = 0;
+    TREE_STAGES.forEach((s, i) => { if (rem >= s[0]) stage = i; });
+    const next = TREE_STAGES[stage + 1];
+    $('tree-stage').textContent = TREE_STAGES[stage][1];
+    $('tree-sub').textContent = next ? 'あと ' + Math.ceil(next[0] - rem) + ' 語で「' + next[1] + '」' : '最終段階です';
+
+    // 大きさは段階に応じて、葉の数は覚えている語数に応じて（最大220枚。多いときは1枚が複数語を表す）
+    const W = 320, H = 200, gx = W / 2, gy = H - 18;
+    const g = Math.min(1, 0.18 + Math.sqrt(rem / 1680) * 0.95); // 成長度 0.18〜1
+    const trunkH = 20 + 110 * g, trunkW = 4 + 14 * g;
+    const crownR = 14 + 70 * g;
+    const cx = gx, cy = gy - trunkH - crownR * 0.35;
+    const perLeaf = Math.max(1, Math.ceil(Math.max(rem, vals.length) / 220));
+    const green = Math.round(Math.max(0, rem - fading * 0.9) / perLeaf);
+    const yellow = Math.round(fading / perLeaf);
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="tree-svg" role="img" aria-label="記憶の木">';
+    svg += '<ellipse cx="' + gx + '" cy="' + (gy + 4) + '" rx="' + (60 + 60 * g) + '" ry="9" class="ground"/>';
+    if (rem < 1 && vals.length === 0) {
+      svg += '<path d="M' + gx + ' ' + gy + ' q-2 -14 0 -22" class="sprout-stem"/><ellipse cx="' + (gx - 7) + '" cy="' + (gy - 22) + '" rx="8" ry="4.5" transform="rotate(-25 ' + (gx - 7) + ' ' + (gy - 22) + ')" class="leaf l0"/><ellipse cx="' + (gx + 7) + '" cy="' + (gy - 24) + '" rx="8" ry="4.5" transform="rotate(25 ' + (gx + 7) + ' ' + (gy - 24) + ')" class="leaf l0"/>';
+    } else {
+      // 幹と枝
+      svg += '<path d="M' + (gx - trunkW / 2) + ' ' + gy + ' C' + (gx - trunkW / 2) + ' ' + (gy - trunkH * 0.6) + ' ' + (gx - trunkW * 0.25) + ' ' + (gy - trunkH) + ' ' + gx + ' ' + (gy - trunkH) +
+        ' C' + (gx + trunkW * 0.25) + ' ' + (gy - trunkH) + ' ' + (gx + trunkW / 2) + ' ' + (gy - trunkH * 0.6) + ' ' + (gx + trunkW / 2) + ' ' + gy + 'Z" class="trunk"/>';
+      if (g > 0.3) {
+        [[-1, 0.55], [1, 0.7], [-1, 0.85], [1, 0.95]].forEach(([dir, h], i) => {
+          const by = gy - trunkH * h, len = crownR * (0.55 + 0.15 * (i % 2));
+          svg += '<path d="M' + gx + ' ' + by + ' Q' + (gx + dir * len * 0.5) + ' ' + (by - len * 0.15) + ' ' + (gx + dir * len) + ' ' + (by - len * 0.45) + '" class="branch" style="stroke-width:' + Math.max(1.5, trunkW * 0.35) + '"/>';
+        });
+      }
+      // 葉っぱ（樹冠の楕円の中にばらまく）
+      const total = green + yellow;
+      for (let i = 0; i < total; i++) {
+        const a = seeded(i) * Math.PI * 2, r = Math.sqrt(seeded(i + 999)) * crownR;
+        const x = cx + Math.cos(a) * r * 1.15, y = cy + Math.sin(a) * r * 0.8;
+        const s = 3 + 3.5 * g, rot = Math.round(seeded(i + 7) * 180);
+        const cls = i < green ? 'leaf l' + (1 + (i % 3)) : 'leaf fade';
+        svg += '<ellipse cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" rx="' + s.toFixed(1) + '" ry="' + (s * 0.55).toFixed(1) + '" transform="rotate(' + rot + ' ' + x.toFixed(1) + ' ' + y.toFixed(1) + ')" class="' + cls + '"/>';
+      }
+    }
+    svg += '</svg>';
+    $('tree').innerHTML = svg;
+    $('tree-note').innerHTML = vals.length === 0
+      ? '単語を覚えるたびに葉が増えていきます。'
+      : '覚えている単語（予測）<b>' + Math.round(rem) + '語</b>' + (perLeaf > 1 ? '（葉1枚＝' + perLeaf + '語）' : '') +
+        (fading ? '　<span class="fade-t">色あせた葉 ' + fading + '枚</span>：忘れかけの単語です。復習すると緑に戻ります。' : '　すべての葉が元気です。');
+  }
+
+  // ---------- 合格までのペース予測 ----------
+  function paceHtml(compact) {
+    const t = today();
+    const vals = Object.values(cards);
+    const seen = vals.length, remaining = WORDS.length - seen;
+    const learned = vals.filter(SRS.isLearned).length;
+    // 直近14日に初めて出会った単語数から、1日あたりのペースを出す
+    const since = SRS.addDays(t, -13);
+    const recentNew = vals.filter((c) => c.first && c.first >= since).length;
+    const firstDays = vals.map((c) => c.first).filter(Boolean).sort();
+    const span = firstDays.length ? Math.min(14, SRS.diffDays(firstDays[0] < since ? since : firstDays[0], t) + 1) : 0;
+    const pace = span ? recentNew / span : 0;
+    const exam = settings.exam;
+    let html = '<div class="pace-title">合格までのペース</div>';
+    if (!seen) return html + '<p class="note">学習を始めると、このペースで全語を覚えるまでの日数を予測します。' + (exam ? '' : '設定で試験日を入れると、試験日から逆算します。') + '</p>';
+    const daysAll = pace > 0 ? Math.ceil(remaining / pace) : null;
+    // 新しく出会った単語が「定着」（記憶の強さ21日以上）するまで、毎回順調でもおよそ25日かかる
+    const finishLearn = daysAll != null ? SRS.addDays(t, daysAll + 25) : null;
+    html += '<div class="pace-row"><span>今のペース</span><b>1日 ' + (Math.round(pace * 10) / 10) + ' 語</b></div>';
+    html += '<div class="pace-row"><span>全1,680語に出会う日</span><b>' + (remaining === 0 ? '達成！' : daysAll != null ? fmtDate(SRS.addDays(t, daysAll)) + '（あと' + daysAll + '日）' : '—') + '</b></div>';
+    if (!compact) html += '<div class="pace-row"><span>全語が定着する目安</span><b>' + (learned === WORDS.length ? '達成！' : finishLearn ? fmtDate(finishLearn) + 'ごろ' : '—') + '</b></div>';
+    if (exam) {
+      const left = SRS.diffDays(t, exam);
+      if (left < 0) {
+        html += '<p class="note">設定の試験日が過ぎています。次の試験日を入れてください。</p>';
+      } else {
+        const room = left - 25; // 定着までの期間を差し引いた、新しい単語に出会える残り日数
+        const need = remaining === 0 ? 0 : room > 0 ? Math.ceil(remaining / room) : null;
+        const ok = need === 0 || (need != null && pace >= need);
+        html += '<div class="pace-row"><span>試験日 ' + fmtDate(exam) + '</span><b>あと ' + left + ' 日</b></div>';
+        html += '<div class="pace-verdict ' + (ok ? 'ok' : 'ng') + '">' +
+          (need === 0 ? 'すべての単語に出会いました。あとは復習で定着させましょう。'
+            : need == null ? '試験日までに全語を定着させるのは難しいペースです。新出を増やしつつ、出会える単語を優先しましょう。'
+              : ok ? 'このペースなら試験日までに全語が定着する見込みです。'
+                : '試験日までに全語を定着させるには、1日 <b>' + need + ' 語</b>ずつ新しい単語に出会う必要があります。') + '</div>';
+        if (need && !ok && !compact) html += '<p class="note">「1日の問題数」を増やすと新出が増えます。初めの1か月は、新出1語につき復習が3〜4回ほど出ます。</p>';
+      }
+    } else if (!compact) {
+      html += '<p class="note">設定で試験日を入れると、試験日から逆算した目安が出ます。</p>';
+    }
+    return html;
+  }
+  function fmtDate(d) { const [y, m, dd] = d.split('-'); return Number(m) + '/' + Number(dd); }
+
   $('btn-start').addEventListener('click', startQuiz);
   $('btn-more').addEventListener('click', () => {
     const added = extendSession(10);
@@ -323,6 +437,13 @@
       const iv = c.interval;
       nextText = (grade === 1 ? 'このあともう一度出ます。' : '') + '次の復習は' + (iv === 1 ? '明日' : iv + '日後');
       curveHtml = curveSvg(oldS, before && before.last ? SRS.diffDays(before.last, t) : 0, c.lastRecall, c.stability, iv);
+      // 称号用の記録
+      meta.answers++;
+      if (grade === 5) meta.perfects++;
+      if (c.lastRecall != null && c.lastRecall < 0.8 && grade >= 3) meta.recovered++;
+      meta.run = grade >= 4 ? meta.run + 1 : 0;
+      meta.bestRun = Math.max(meta.bestRun, meta.run);
+      save(K.meta, meta);
     } else {
       nextText = gaveUp ? '明日また出ます' : '次の復習は明日';
     }
@@ -330,6 +451,7 @@
     session.results.push({ no: w.no, grade, retry: !!cur.q.retry });
     session.pos++;
     save(K.session, session);
+    checkBadges();
 
     const inp = $('q-input');
     inp.value = w.answer;
@@ -543,11 +665,13 @@
       ['習得（記憶の強さ21日以上）', vals.filter(SRS.isLearned).length],
       ['今の記憶率（予測・平均）', vals.length ? Math.round(100 * vals.reduce((s, c) => s + (SRS.retention(c, t) || 0), 0) / vals.length) + '%' : '-'],
       ['今日の期限', vals.filter((c) => c.due && c.due <= t).length],
-      ['連続学習', streak() + '日'],
+      ['学習した日数（合計）', Object.keys(log).length + '日'],
       ['今日解いた数', log[t] || 0],
       ['累計解答数', Object.values(log).reduce((a, b) => a + b, 0)],
     ];
     $('s-grid').innerHTML = items.map(([k, v]) => '<div><small>' + k + '</small><b>' + v + '</b></div>').join('');
+    $('s-pace').innerHTML = paceHtml(false);
+    renderBadges();
 
     const days = [];
     for (let i = 0; i < 7; i++) {
@@ -569,6 +693,7 @@
   function renderSettings() {
     $('set-daily').value = settings.daily;
     $('set-order').value = settings.order;
+    $('set-exam').value = settings.exam || '';
     $('set-autospeak').checked = settings.autoSpeak;
     $('set-sound').checked = settings.sound;
     $('set-rate').value = settings.rate;
@@ -600,6 +725,7 @@
     settings.order = e.target.value; saveSettings();
     if (session && session.date === today() && session.pos === 0) { session = null; save(K.session, null); }
   });
+  $('set-exam').addEventListener('change', (e) => { settings.exam = e.target.value || ''; saveSettings(); });
   $('set-autospeak').addEventListener('change', (e) => { settings.autoSpeak = e.target.checked; saveSettings(); });
   $('set-sound').addEventListener('change', (e) => { settings.sound = e.target.checked; saveSettings(); if (settings.sound) sfx.ok(); });
   $('set-rate').addEventListener('input', (e) => { settings.rate = Number(e.target.value); $('rate-val').textContent = '×' + settings.rate.toFixed(2); saveSettings(); });
@@ -607,7 +733,7 @@
   $('btn-test-voice').addEventListener('click', () => speak('This is how the example sentences will sound.'));
 
   $('btn-export').addEventListener('click', () => {
-    const data = { app: 'jun1-drill', version: 1, exported: new Date().toISOString(), cards, settings, log, session };
+    const data = { app: 'jun1-drill', version: 1, exported: new Date().toISOString(), cards, settings, log, session, meta, badges: unlocked };
     const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -625,6 +751,8 @@
         if (d.app !== 'jun1-drill' || typeof d.cards !== 'object') throw new Error('形式がちがいます');
         if (!confirm('今の学習記録を、このファイルの内容で置き換えます。よろしいですか？')) return;
         cards = d.cards; settings = Object.assign({}, DEFAULT_SETTINGS, d.settings || {}); log = d.log || {}; session = d.session || null;
+        meta = Object.assign({ answers: 0, perfects: 0, recovered: 0, run: 0, bestRun: 0 }, d.meta || {}); unlocked = d.badges || {};
+        save(K.meta, meta); save(K.badges, unlocked);
         save(K.cards, cards); save(K.settings, settings); save(K.log, log); save(K.session, session);
         alert('読み込みました');
         show('home');
@@ -635,7 +763,8 @@
   });
   $('btn-reset').addEventListener('click', () => {
     if (!confirm('学習記録をすべて消します。元に戻せません。よろしいですか？')) return;
-    cards = {}; log = {}; session = null;
+    cards = {}; log = {}; session = null; meta = { answers: 0, perfects: 0, recovered: 0, run: 0, bestRun: 0 }; unlocked = {};
+    save(K.meta, meta); save(K.badges, unlocked);
     save(K.cards, cards); save(K.log, log); save(K.session, null);
     show('home');
   });
@@ -645,6 +774,122 @@
   const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
   if (isIOS && !standalone && !localStorage.getItem('jun1.a2hsClosed')) $('a2hs').classList.remove('hidden');
   $('a2hs-close').addEventListener('click', () => { $('a2hs').classList.add('hidden'); localStorage.setItem('jun1.a2hsClosed', '1'); });
+
+  // ---------- 称号・実績 ----------
+  // 続けた日数ではなく、「覚えた量」「取り戻した数」などの積み重ねでもらえる
+  const strongCount = (minS) => Object.values(cards).filter((c) => SRS.stabilityOf(c) >= minS).length;
+  const BADGES = [
+    { id: 'first', icon: '🌱', name: '最初の一歩', desc: '1問解く', cur: () => meta.answers, goal: 1 },
+    { id: 'meet100', icon: '👋', name: '100語との出会い', desc: '100語に出会う', cur: () => Object.keys(cards).length, goal: 100 },
+    { id: 'meet500', icon: '🤝', name: '500語との出会い', desc: '500語に出会う', cur: () => Object.keys(cards).length, goal: 500 },
+    { id: 'meet1000', icon: '🧭', name: '1000語との出会い', desc: '1000語に出会う', cur: () => Object.keys(cards).length, goal: 1000 },
+    { id: 'meetAll', icon: '🗺️', name: '全単語制覇', desc: '1680語すべてに出会う', cur: () => Object.keys(cards).length, goal: 1680 },
+    { id: 'learn10', icon: '📌', name: '定着の始まり', desc: '10語を定着させる（記憶の強さ21日以上）', cur: () => strongCount(21), goal: 10 },
+    { id: 'learn100', icon: '📚', name: '100語の蔵書', desc: '100語を定着させる', cur: () => strongCount(21), goal: 100 },
+    { id: 'learn500', icon: '🏛️', name: '500語の図書館', desc: '500語を定着させる', cur: () => strongCount(21), goal: 500 },
+    { id: 'learn1000', icon: '🎓', name: '1000語の知識人', desc: '1000語を定着させる', cur: () => strongCount(21), goal: 1000 },
+    { id: 'learnAll', icon: '👑', name: '準一級語彙マスター', desc: '1680語すべてを定着させる', cur: () => strongCount(21), goal: 1680 },
+    { id: 'strong50', icon: '💎', name: '揺るがない記憶', desc: '記憶の強さ60日以上の単語を50語つくる', cur: () => strongCount(60), goal: 50 },
+    { id: 'recover10', icon: '🔁', name: '取り戻す力', desc: '忘れかけた単語（記憶率80%未満）を10回思い出す', cur: () => meta.recovered, goal: 10 },
+    { id: 'recover50', icon: '🧲', name: '記憶のサルベージ', desc: '忘れかけた単語を50回思い出す', cur: () => meta.recovered, goal: 50 },
+    { id: 'run20', icon: '🎯', name: 'ノーミス20', desc: 'ミスもヒントもなしで20問連続正解', cur: () => meta.bestRun, goal: 20 },
+    { id: 'run50', icon: '🏹', name: 'ノーミス50', desc: 'ミスもヒントもなしで50問連続正解', cur: () => meta.bestRun, goal: 50 },
+    { id: 'perfect100', icon: '⚡', name: '即答100', desc: '「完璧」を合計100回とる', cur: () => meta.perfects, goal: 100 },
+    { id: 'comeback', icon: '💪', name: '苦手克服', desc: '3回以上忘れた単語を定着させる', cur: () => Object.values(cards).filter((c) => c.lapses >= 3 && SRS.stabilityOf(c) >= 21).length, goal: 1 },
+    { id: 'tree', icon: '🌳', name: '木を育てた', desc: '記憶の木を「木」まで育てる（覚えている語300）', cur: () => Math.floor(rememberedCount()), goal: 300 },
+    { id: 'ans1000', icon: '✍️', name: '1000問の足あと', desc: '合計1000問解く', cur: () => meta.answers, goal: 1000 },
+  ];
+  function checkBadges() {
+    const got = [];
+    BADGES.forEach((b) => {
+      if (!unlocked[b.id] && b.cur() >= b.goal) { unlocked[b.id] = today(); got.push(b); }
+    });
+    if (got.length) {
+      save(K.badges, unlocked);
+      toast('🏅 称号「' + got.map((b) => b.name).join('」「') + '」を獲得！');
+      sfx.ok();
+    }
+  }
+  function renderBadges() {
+    const list = BADGES.map((b) => {
+      const done = !!unlocked[b.id];
+      const p = Math.min(1, b.cur() / b.goal);
+      return '<div class="badge ' + (done ? 'got' : '') + '"><span class="b-icon">' + (done ? b.icon : '🔒') + '</span><div class="b-body"><b>' + esc(b.name) + '</b><small>' + esc(b.desc) + '</small>' +
+        (done ? '<small class="b-date">' + fmtDate(unlocked[b.id]) + ' 獲得</small>' : '<div class="b-bar"><div style="width:' + (p * 100).toFixed(1) + '%"></div></div><small class="b-prog">' + Math.min(b.cur(), b.goal) + ' / ' + b.goal + '</small>') + '</div></div>';
+    });
+    $('s-badges').innerHTML = '<p class="note">' + Object.keys(unlocked).length + ' / ' + BADGES.length + ' 個獲得</p>' + list.join('');
+  }
+
+  // ---------- 単語図鑑 ----------
+  let zkFilter = 'all';
+  function levelOf(c) {
+    if (!c) return 0;
+    const S = SRS.stabilityOf(c);
+    return S >= 60 ? 5 : S >= 21 ? 4 : S >= 7 ? 3 : S >= 3 ? 2 : 1;
+  }
+  function renderZukan() {
+    const t = today();
+    const vals = Object.values(cards);
+    const counts = [0, 0, 0, 0, 0, 0];
+    WORDS.forEach((w) => counts[levelOf(cards[w.no])]++);
+    $('zk-summary').innerHTML = '<div><b>' + vals.length + '</b><small>出会った</small></div><div><b>' + (counts[4] + counts[5]) + '</b><small>定着</small></div><div><b>' +
+      vals.filter((c) => (SRS.retention(c, t) || 1) < 0.85).length + '</b><small>忘れかけ</small></div><div><b>' + (WORDS.length - vals.length) + '</b><small>未学習</small></div>';
+    let html = '';
+    for (let i = 0; i < WORDS.length; i += 100) {
+      const group = WORDS.slice(i, i + 100);
+      html += '<div class="zk-group"><div class="zk-gl">' + group[0].no + '–' + group[group.length - 1].no + '</div><div class="zk-cells">';
+      group.forEach((w) => {
+        const c = cards[w.no];
+        const lv = levelOf(c);
+        const r = c ? SRS.retention(c, t) : null;
+        const show = zkFilter === 'all' || (zkFilter === 'fading' && r != null && r < 0.85) || (zkFilter === 'weak' && SRS.isWeak(c)) || (zkFilter === 'learned' && lv >= 4);
+        const op = r == null ? 1 : Math.max(0.35, Math.min(1, (r - 0.5) / 0.4));
+        html += '<button class="zk-cell lv' + lv + (show ? '' : ' dim') + '" data-no="' + w.no + '" style="opacity:' + (show ? op.toFixed(2) : '') + '" aria-label="' + esc(w.word) + '"></button>';
+      });
+      html += '</div></div>';
+    }
+    $('zk-grid').innerHTML = html;
+  }
+  document.querySelectorAll('.zk-filters .chip').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.zk-filters .chip').forEach((x) => x.classList.toggle('on', x === b));
+    zkFilter = b.dataset.filter;
+    renderZukan();
+  }));
+  $('zk-grid').addEventListener('click', (e) => {
+    const cell = e.target.closest('.zk-cell');
+    if (!cell) return;
+    const w = BY_NO.get(Number(cell.dataset.no));
+    const c = cards[w.no];
+    const t = today();
+    let stats;
+    if (!c) stats = '<p class="note">まだ出会っていない単語です。毎日の新出で出てきます。</p>';
+    else {
+      const r = SRS.retention(c, t);
+      stats = '<div class="zk-stats">' +
+        '<div><small>今の記憶率</small><b>' + Math.round(100 * r) + '%</b></div>' +
+        '<div><small>記憶の強さ</small><b>' + fmtS(SRS.stabilityOf(c)) + '日</b></div>' +
+        '<div><small>次の復習</small><b>' + (c.due <= t ? '今日' : fmtDate(c.due)) + '</b></div>' +
+        '<div><small>忘れた回数</small><b>' + c.lapses + '回</b></div></div>';
+    }
+    $('zk-detail').innerHTML = '<div class="zk-no">No.' + w.no + '</div><div class="zk-word">' + esc(w.word) + ' <button class="speak-mini" id="zk-speak" aria-label="読み上げ">🔊</button></div>' +
+      '<div class="zk-mean">' + esc(w.meaning) + '</div>' +
+      (c ? '<div class="zk-en">' + esc(w.before) + '<b>' + esc(w.answer) + '</b>' + esc(w.after) + '</div><div class="zk-ja">' + esc(w.ja).replace(/【(.+?)】/g, '<span class="mark">$1</span>') + '</div>' : '') + stats;
+    $('zk-speak').addEventListener('click', () => speak(c ? w.before + w.answer + w.after : w.word));
+    $('zk-sheet').classList.remove('hidden');
+  });
+  $('zk-close').addEventListener('click', () => $('zk-sheet').classList.add('hidden'));
+  $('zk-sheet').addEventListener('click', (e) => { if (e.target === $('zk-sheet')) $('zk-sheet').classList.add('hidden'); });
+
+  // ---------- 友達に教える ----------
+  const APP_URL = 'https://sawadacurry-dev.github.io/jun1-drill/';
+  $('btn-share').addEventListener('click', async () => {
+    const data = { title: '準一級 単語ドリル', text: '英検準1級の単語1680語を、忘却曲線にそって毎日出題してくれるアプリ', url: APP_URL };
+    try {
+      if (navigator.share) { await navigator.share(data); return; }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(APP_URL); toast('URLをコピーしました。LINEなどに貼り付けて送ってください。'); }
+    catch (e) { prompt('このURLを友達に送ってください', APP_URL); }
+  });
 
   // ---------- 毎日の通知 ----------
   // 通知が届いたとき、Service Worker が「今日の問題数」を計算できるように、要約を IndexedDB に置いておく
@@ -685,10 +930,43 @@
     const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
     return Uint8Array.from(raw, (c) => c.charCodeAt(0));
   }
+  // 通知サーバー（Cloudflare Workers）に、この端末と通知する時刻を登録する
+  async function registerPush(sub) {
+    const res = await fetch(window.PUSH_CONFIG.serverUrl + '/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON(), hour: settings.pushHour }),
+    });
+    if (!res.ok) throw new Error('サーバーに登録できませんでした (' + res.status + ')');
+    localStorage.setItem('jun1.pushKey', window.PUSH_CONFIG.vapidPublicKey);
+  }
+  async function getSub() {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  }
+  async function subscribe() {
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(window.PUSH_CONFIG.vapidPublicKey) });
+  }
+  // アプリを開くたびに登録を確認する（通知用の鍵が新しくなっていたら、自動で登録し直す）
+  async function syncPush() {
+    if (!pushSupported || !window.isSecureContext || Notification.permission !== 'granted' || !window.PUSH_CONFIG.serverUrl) return;
+    try {
+      let sub = await getSub();
+      if (!sub) return;
+      if (localStorage.getItem('jun1.pushKey') !== window.PUSH_CONFIG.vapidPublicKey) {
+        await sub.unsubscribe();
+        sub = await subscribe();
+      }
+      await registerPush(sub);
+    } catch (e) { /* 次に開いたときにまた試す */ }
+  }
   async function renderPush() {
     const st = $('push-status');
     const show = (id, on) => $(id).classList.toggle('hidden', !on);
-    show('btn-push-on', false); show('push-code-wrap', false); show('btn-push-test', false);
+    ['btn-push-on', 'btn-push-test', 'btn-push-off', 'push-hour-wrap'].forEach((id) => show(id, false));
+    const sel = $('set-push-hour');
+    if (!sel.options.length) sel.innerHTML = Array.from({ length: 24 }, (_, h) => '<option value="' + h + '">' + h + '時</option>').join('');
+    sel.value = settings.pushHour;
     if (!pushSupported || !window.isSecureContext) {
       st.textContent = isIOS && !standalone
         ? 'iPhone では、ホーム画面に追加したアイコンから開いたときだけ通知を設定できます（iOS 16.4 以降）。'
@@ -699,33 +977,47 @@
       st.textContent = '通知が拒否されています。iPhone の「設定 → 通知 → 準一級単語」で通知をオンにしてください。';
       return;
     }
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      st.textContent = '毎日20時ごろに「今日の問題」が何問あるかをお知らせします。';
+    const sub = await getSub();
+    show('push-hour-wrap', true);
+    if (!sub || Notification.permission !== 'granted') {
+      st.textContent = '毎日決まった時刻に「今日の問題が何問あるか」をお知らせします。';
       show('btn-push-on', true);
       return;
     }
-    st.textContent = '通知はオンです（毎日20時ごろ）。';
-    $('push-code').value = JSON.stringify(sub.toJSON());
-    show('push-code-wrap', !localStorage.getItem('jun1.pushSent'));
+    st.textContent = '通知はオンです（毎日' + settings.pushHour + '時ごろ）。';
     show('btn-push-test', true);
+    show('btn-push-off', true);
   }
   $('btn-push-on').addEventListener('click', async () => {
     try {
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') { renderPush(); return; }
-      const reg = await navigator.serviceWorker.ready;
-      await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(window.PUSH_CONFIG.vapidPublicKey) });
+      const sub = (await getSub()) || (await subscribe());
+      await registerPush(sub);
       writeSummary();
-      renderPush();
+      toast('通知をオンにしました。毎日' + settings.pushHour + '時ごろに届きます。');
     } catch (err) { alert('通知をオンにできませんでした: ' + err.message); }
+    renderPush();
   });
-  $('btn-push-copy').addEventListener('click', async () => {
-    const t = $('push-code');
-    try { await navigator.clipboard.writeText(t.value); } catch (e) { t.select(); document.execCommand('copy'); }
-    toast('コピーしました。Claude に貼り付けて送ってください。');
-    localStorage.setItem('jun1.pushSent', '1');
+  $('set-push-hour').addEventListener('change', async (e) => {
+    settings.pushHour = Number(e.target.value);
+    saveSettings();
+    try {
+      const sub = Notification.permission === 'granted' && (await getSub());
+      if (sub) { await registerPush(sub); toast('通知の時刻を' + settings.pushHour + '時に変えました。'); }
+    } catch (err) { alert('時刻を変えられませんでした: ' + err.message); }
+    renderPush();
+  });
+  $('btn-push-off').addEventListener('click', async () => {
+    try {
+      const sub = await getSub();
+      if (sub) {
+        await fetch(window.PUSH_CONFIG.serverUrl + '/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+        await sub.unsubscribe();
+      }
+      toast('通知をオフにしました。');
+    } catch (err) { alert('通知をオフにできませんでした: ' + err.message); }
+    renderPush();
   });
   $('btn-push-test').addEventListener('click', async () => {
     writeSummary();
@@ -740,6 +1032,8 @@
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
+  checkBadges();
   show('home');
   writeSummary();
+  syncPush();
 })();
