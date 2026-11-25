@@ -1,5 +1,9 @@
 # 準一級 単語ドリル
 
+**公開URL: https://sawadacurry-dev.github.io/jun1-drill/**
+
+スマホでこのURLを開き、「ホーム画面に追加」するとアプリのように使えます。`main` ブランチに push すると、`app` フォルダの中身が GitHub Pages に自動で公開し直されます（`.github/workflows/pages.yml`）。
+
 英検準1級の単語1,680語を、例文の空欄補充で覚えるスマホ向けWebアプリです。忘却曲線に沿って、毎日の出題を自動で決めます。
 
 ## フォルダ構成
