@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#a9d2f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="準一級単語">
+<title>準一級 単語ドリル</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- ホーム -->
+  <section id="view-home" class="view">
+    <header class="top"><h1>準一級 単語ドリル</h1></header>
+    <div class="card">
+      <div class="today-label">今日の問題</div>
+      <div class="today-count"><span id="home-total">0</span><small>問</small></div>
+      <div class="today-break">復習 <b id="home-review">0</b> ／ 新出 <b id="home-new">0</b></div>
+      <div id="home-done" class="done-msg hidden">今日の分は完了しました</div>
+      <button id="btn-start" class="primary big">スタート</button>
+      <button id="btn-more" class="secondary hidden">もう10問やる</button>
+    </div>
+    <div class="card stats-mini">
+      <div class="progress-label">習得状況 <span id="home-learned">0</span> / <span id="home-all">0</span> 語</div>
+      <div class="bar"><div id="home-bar"></div></div>
+      <div class="mini-row">
+        <div><span id="home-streak">0</span><small>日連続</small></div>
+        <div><span id="home-due-tomorrow">0</span><small>明日の復習</small></div>
+        <div><span id="home-weak">0</span><small>苦手</small></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button data-go="stats" class="secondary">記録・苦手単語</button>
+      <button data-go="settings" class="secondary">設定</button>
+    </nav>
+  </section>
+
+  <!-- 出題 -->
+  <section id="view-quiz" class="view hidden">
+    <header class="quiz-top">
+      <button id="btn-quit" class="icon-btn" aria-label="中断">
+        <svg viewBox="0 0 24 24" width="28" height="28"><path d="M15 4 7 12l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="qprog">
+        <div class="trophy" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26"><path fill="#fff" d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3V3zm0 4H6v1a2 2 0 0 0 1.2 1.8C7.1 9.2 7 8.6 7 8V7zm10 0v1c0 .6-.1 1.2-.2 1.8A2 2 0 0 0 18 8V7h-1z"/></svg>
+        </div>
+        <div class="qbar">
+          <div id="q-bar"></div>
+          <span class="qcount"><span id="q-pos">0</span>/<span id="q-len">20</span></span>
+        </div>
+      </div>
+      <button id="btn-q-settings" class="icon-btn" aria-label="設定">
+        <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5L19.4 13zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+      </button>
+    </header>
+
+    <div class="qcard-wrap">
+      <div id="q-tag" class="qtab new">新出</div>
+      <div class="qcard">
+        <div class="qja">
+          <div id="q-ja" class="ja"></div>
+          <div id="q-hint" class="qhint"></div>
+        </div>
+        <form id="q-form" class="qen" autocomplete="off">
+          <div class="en"><span id="q-before"></span><input id="q-input" class="blank-input" type="text" inputmode="latin" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" aria-label="空欄に入る語"><span id="q-after"></span></div>
+          <div id="q-feedback" class="feedback"></div>
+        </form>
+      </div>
+    </div>
+
+    <div id="q-result" class="result hidden">
+      <div class="r-head"><span id="r-grade" class="grade"></span><span id="r-next" class="r-next"></span></div>
+      <div id="r-word" class="r-word"></div>
+      <div id="r-curve" class="r-curve"></div>
+      <div class="row">
+        <button id="btn-speak" class="secondary">🔊 もう一度聞く</button>
+        <button id="btn-next" class="primary">次へ</button>
+      </div>
+    </div>
+
+    <div id="q-toolbar" class="qtoolbar">
+      <button id="btn-hint" class="tool">
+        <span class="tool-icon hint-icon">?</span>
+        <span>ヒントを見る<small id="hint-left-wrap">（使った回数 <span id="hint-left">0</span>）</small></span>
+      </button>
+      <button id="btn-giveup" class="tool">
+        <span class="tool-icon giveup-icon">!</span>
+        <span>答えを見る</span>
+      </button>
+      <button id="btn-submit" class="tool">
+        <span class="tool-icon ok-icon">✓</span>
+        <span>答える</span>
+      </button>
+    </div>
+    <span id="q-measure" class="measure" aria-hidden="true"></span>
+  </section>
+
+  <!-- 終了 -->
+  <section id="view-finish" class="view hidden">
+    <div class="card center">
+      <h2>おつかれさまでした</h2>
+      <div id="f-summary" class="f-summary"></div>
+      <button data-go="home" class="primary big">ホームへ</button>
+    </div>
+  </section>
+
+  <!-- 記録 -->
+  <section id="view-stats" class="view hidden">
+    <header class="top"><button data-go="home" class="link">← 戻る</button><h2>記録</h2></header>
+    <div class="card">
+      <div class="grid2" id="s-grid"></div>
+    </div>
+    <div class="card">
+      <h3>今後7日間の復習予定</h3>
+      <div id="s-forecast" class="forecast"></div>
+    </div>
+    <div class="card">
+      <h3>苦手単語</h3>
+      <p class="note">3回以上「忘れた」になった単語、または覚えにくさの値が低い単語です。</p>
+      <ul id="s-weak" class="wordlist"></ul>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="view-settings" class="view hidden">
+    <header class="top"><button id="btn-settings-back" class="link">← 戻る</button><h2>設定</h2></header>
+    <div class="card form">
+      <label>1日の問題数
+        <input id="set-daily" type="number" min="1" max="200" step="1">
+      </label>
+      <label>新しい単語の出し方
+        <select id="set-order">
+          <option value="seq">リストの順番どおり</option>
+          <option value="random">ランダム</option>
+        </select>
+      </label>
+      <label class="check"><input id="set-sound" type="checkbox"> タイプ音・効果音を鳴らす</label>
+      <label class="check"><input id="set-autospeak" type="checkbox"> 解答後に英文を自動で読み上げる</label>
+      <label>読み上げの速さ <span id="rate-val"></span>
+        <input id="set-rate" type="range" min="0.5" max="1.3" step="0.05">
+      </label>
+      <label>声
+        <select id="set-voice"></select>
+      </label>
+      <p id="voice-note" class="note"></p>
+      <button id="btn-test-voice" class="secondary">🔊 試しに聞く</button>
+    </div>
+    <div class="card form">
+      <h3>データの保存</h3>
+      <p class="note">学習記録はこの端末のブラウザに保存されています。機種変更やブラウザのデータ削除に備えて、ときどき書き出しておいてください。</p>
+      <button id="btn-export" class="secondary">学習記録を書き出す</button>
+      <label class="file secondary">学習記録を読み込む<input id="file-import" type="file" accept="application/json"></label>
+      <button id="btn-reset" class="secondary danger">学習記録をすべて消す</button>
+    </div>
+  </section>
+</div>
+<script src="words.js"></script>
+<script src="srs.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

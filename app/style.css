@@ -1,0 +1,148 @@
+:root {
+  --bg1: #a9d2f8; --bg2: #d7ebfd;
+  --card: #ffffff; --card-top: #eef6fe; --ink: #1d2733; --sub: #6b7a8c; --line: #dbe7f3;
+  --pri: #4a90e8; --pri-dark: #2f74cf; --pri-ink: #fff; --accent: #8f86e8;
+  --ok: #1f9d6b; --ng: #e0574a; --near: #d8901a; --mark: #1f9d6b;
+  --blank: #dbeafd; --radius: 26px;
+  --kb: 0px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
+  -webkit-text-size-adjust: 100%; }
+body { background: linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%) fixed; }
+#app { max-width: 560px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); }
+.hidden { display: none !important; }
+h1 { font-size: 21px; margin: 8px 0 16px; color: #24508a; }
+h2 { font-size: 18px; margin: 0; }
+h3 { font-size: 15px; margin: 0 0 10px; }
+.top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.card { background: var(--card); border-radius: 22px; padding: 20px; margin-bottom: 14px; box-shadow: 0 6px 20px rgba(40, 100, 170, .10); }
+.center { text-align: center; }
+.note { color: var(--sub); font-size: 13px; margin: 0 0 10px; line-height: 1.6; }
+
+button, .file { font: inherit; border: 0; border-radius: 14px; padding: 13px 16px; cursor: pointer; touch-action: manipulation; }
+button:disabled { opacity: .4; cursor: default; }
+.primary { background: var(--pri); color: var(--pri-ink); font-weight: 700; box-shadow: 0 3px 0 var(--pri-dark); }
+.primary:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--pri-dark); }
+.secondary { background: #fff; color: #3a5f8f; border: 1.5px solid var(--line); }
+.danger { color: var(--ng); }
+.link { background: none; color: #24508a; padding: 6px 0; font-weight: 700; }
+.big { width: 100%; font-size: 18px; padding: 16px; margin-top: 10px; }
+.row { display: flex; gap: 10px; }
+.row > button { flex: 1; }
+.nav { display: flex; gap: 10px; }
+.nav > button { flex: 1; }
+
+/* ---------- ホーム ---------- */
+.today-label { color: var(--sub); font-size: 14px; }
+.today-count { font-size: 56px; font-weight: 800; line-height: 1.1; color: #24508a; }
+.today-count small { font-size: 18px; margin-left: 4px; }
+.today-break { color: var(--sub); margin-bottom: 8px; }
+.done-msg { color: var(--ok); font-weight: 700; margin: 6px 0; }
+#btn-more { width: 100%; margin-top: 10px; }
+.bar { height: 10px; background: #e3eefa; border-radius: 99px; overflow: hidden; margin: 8px 0 14px; }
+.bar > div { height: 100%; background: var(--pri); width: 0; transition: width .3s; border-radius: 99px; }
+.progress-label { font-size: 14px; color: var(--sub); }
+.mini-row { display: flex; text-align: center; }
+.mini-row > div { flex: 1; font-size: 22px; font-weight: 800; color: #24508a; }
+.mini-row small { display: block; font-size: 12px; color: var(--sub); font-weight: 400; }
+
+/* ---------- 出題 ---------- */
+#view-quiz { padding-bottom: calc(90px + var(--kb)); }
+.quiz-top { display: flex; align-items: center; gap: 8px; margin: 4px 0 26px; }
+.icon-btn { background: none; padding: 4px; color: #fff; display: flex; filter: drop-shadow(0 1px 2px rgba(0,0,0,.08)); }
+.qprog { flex: 1; display: flex; align-items: center; position: relative; }
+.trophy { width: 50px; height: 50px; border-radius: 50%; background: var(--pri); display: flex; align-items: center; justify-content: center;
+  position: relative; z-index: 1; box-shadow: 0 0 0 5px rgba(255,255,255,.35); flex: none; }
+.qbar { flex: 1; height: 18px; margin-left: -10px; background: rgba(255,255,255,.55); border-radius: 0 99px 99px 0; position: relative; }
+.qbar > div { height: 100%; width: 0; background: #fff; border-radius: 0 99px 99px 0; transition: width .4s; }
+.qcount { position: absolute; left: 18px; top: -20px; font-weight: 800; font-size: 14px; color: #fff; text-shadow: 0 0 3px rgba(40,100,170,.6); }
+
+.qcard-wrap { position: relative; padding-top: 30px; }
+.qtab { position: absolute; top: 0; left: 0; padding: 7px 18px 16px; border-radius: 14px 14px 0 0; font-size: 13px; font-weight: 700; color: #fff; }
+.qtab.new { background: #74aef0; }
+.qtab.review { background: #5cc09a; }
+.qtab.retry { background: #ef8a7f; }
+.qcard { position: relative; background: var(--card); border-radius: var(--radius); overflow: hidden; box-shadow: 0 10px 30px rgba(40, 100, 170, .15); }
+.qja { background: var(--card-top); padding: 34px 26px 16px; min-height: 130px; display: flex; flex-direction: column; justify-content: space-between; }
+.ja { font-size: 19px; line-height: 1.7; letter-spacing: .02em; }
+.ja .mark { color: var(--mark); font-weight: 700; }
+.qhint { text-align: right; font-size: 13px; color: var(--sub); min-height: 20px; margin-top: 12px; }
+.qhint code { font-family: "SF Mono", Consolas, monospace; font-size: 15px; color: #24508a; font-weight: 700; letter-spacing: .5px; }
+.qen { padding: 34px 26px 22px; min-height: 180px; }
+.en { font-size: 25px; line-height: 1.9; font-weight: 500; }
+.blank-input { font: inherit; font-weight: 700; color: #24508a; background: var(--blank); border: 0; border-radius: 10px; padding: 0 8px; height: 1.55em;
+  vertical-align: baseline; text-align: center; outline: none; min-width: 64px; transition: background .2s, box-shadow .2s; }
+.blank-input.sp-l { margin-left: .28em; } .blank-input.sp-r { margin-right: .28em; }
+.blank-input:focus { box-shadow: 0 0 0 2px var(--pri); }
+.blank-input.ok { background: #d8f3e6; color: var(--ok); box-shadow: none; }
+.blank-input.ng { background: #fde3e0; color: var(--ng); box-shadow: none; }
+.measure { position: absolute; visibility: hidden; white-space: pre; font-size: 25px; font-weight: 700; left: -9999px; top: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
+.feedback { min-height: 22px; font-size: 14px; font-weight: 700; margin-top: 12px; }
+.feedback.ok { color: var(--ok); } .feedback.wrong { color: var(--ng); } .feedback.near { color: var(--near); }
+.shake { animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+.qtoolbar { position: fixed; left: 0; right: 0; bottom: var(--kb); display: flex; background: #fff;
+  border-top: 1px solid #e6edf5; padding: 8px max(10px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)); z-index: 10; }
+.qtoolbar .tool { flex: 1; background: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px;
+  color: var(--accent); font-size: 13px; font-weight: 700; border-radius: 0; }
+.qtoolbar .tool + .tool { border-left: 1px solid #edf1f6; }
+.qtoolbar small { font-size: 10px; font-weight: 400; color: var(--sub); display: block; text-align: center; }
+.tool-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 20px; }
+.hint-icon { background: var(--accent); }
+.giveup-icon { background: #f0a09a; }
+#btn-giveup { color: #e0776d; }
+.ok-icon { background: var(--pri); }
+#btn-submit { color: var(--pri); }
+@media (min-width: 600px) { .qtoolbar { max-width: 560px; margin: 0 auto; border-radius: 20px 20px 0 0; } }
+
+.result { background: #fff; border-radius: 22px; padding: 16px 18px; margin-top: 14px; box-shadow: 0 6px 20px rgba(40, 100, 170, .12); }
+.r-head { display: flex; align-items: center; gap: 10px; }
+.grade { display: inline-block; font-weight: 800; padding: 4px 14px; border-radius: 99px; color: #fff; }
+.g5 { background: #1f9d6b; } .g4 { background: #45b384; } .g3 { background: #d8901a; } .g2 { background: #e2742f; } .g1 { background: #e0574a; } .gr { background: #8a97a6; }
+.r-next { color: var(--sub); font-size: 14px; }
+.r-word { margin: 10px 0 14px; font-size: 15px; }
+
+/* ---------- 終了・記録・設定 ---------- */
+.f-summary { margin: 16px 0; }
+.f-total { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+.f-row { display: flex; justify-content: space-between; align-items: center; max-width: 220px; margin: 6px auto; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid2 small { display: block; color: var(--sub); font-size: 12px; }
+.grid2 b { font-size: 20px; color: #24508a; }
+.forecast { display: flex; align-items: flex-end; gap: 6px; height: 130px; }
+.fc { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; font-size: 12px; }
+.fc-bar { width: 70%; background: var(--pri); border-radius: 6px 6px 0 0; min-height: 2px; }
+.fc small { color: var(--sub); }
+.wordlist { list-style: none; padding: 0; margin: 0; }
+.wordlist li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.wordlist span { color: var(--sub); font-size: 13px; flex: 1; }
+.wordlist small { color: var(--ng); font-size: 12px; }
+.form label { display: block; margin-bottom: 14px; font-size: 14px; }
+.form input[type=number], .form select { display: block; width: 100%; margin-top: 6px; font-size: 16px; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+.form input[type=range] { display: block; width: 100%; margin-top: 6px; }
+.form label.check { display: flex; gap: 8px; align-items: center; }
+.form > button, .form > .file { display: block; width: 100%; text-align: center; margin-bottom: 10px; }
+.file input { display: none; }
+
+#toast { position: fixed; left: 50%; top: 16px; transform: translate(-50%, -150%); max-width: 92%; background: rgba(29, 39, 51, .92); color: #fff;
+  padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.5; z-index: 50; transition: transform .3s; }
+#toast.show { transform: translate(-50%, 0); }
+
+/* 忘却曲線の図 */
+.r-curve { margin: 0 0 14px; }
+.r-curve:empty { display: none; }
+.curve { width: 100%; height: auto; display: block; background: #f5f9fe; border-radius: 12px; }
+.curve .grid { stroke: #e3ecf6; stroke-width: 1; }
+.curve .g90 { stroke: #f0b8b0; stroke-width: 1; stroke-dasharray: 3 3; }
+.curve .ax { font-size: 9px; fill: #8a97a6; }
+.curve .due-t { fill: #e0574a; font-weight: 700; }
+.curve .old { fill: none; stroke: #b8c4d2; stroke-width: 2; stroke-dasharray: 4 3; }
+.curve .jump { stroke: #b8c4d2; stroke-width: 1.5; stroke-dasharray: 2 2; }
+.curve .new { fill: none; stroke: var(--pri); stroke-width: 2.5; }
+.curve .now { fill: var(--pri); }
+.curve .due { fill: #fff; stroke: #e0574a; stroke-width: 2.5; }
+.curve-note { font-size: 12px; color: var(--sub); line-height: 1.6; margin-top: 6px; }
