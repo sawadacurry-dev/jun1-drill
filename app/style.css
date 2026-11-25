@@ -256,3 +256,9 @@ button:disabled { opacity: .4; cursor: default; }
 .b-bar { height: 5px; background: #e8eef5; border-radius: 99px; overflow: hidden; margin-top: 4px; }
 .b-bar > div { height: 100%; background: var(--pri); }
 .b-prog { text-align: right; font-size: 11px !important; }
+
+/* エラー時の案内 */
+.err-banner { position: fixed; left: 12px; right: 12px; top: max(12px, env(safe-area-inset-top)); z-index: 100; background: #fff; border: 2px solid #f0b8b0;
+  border-radius: 16px; padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.15); font-size: 14px; }
+.err-banner small { display: block; color: var(--sub); margin: 6px 0 10px; word-break: break-all; }
+.err-banner button { width: 100%; }

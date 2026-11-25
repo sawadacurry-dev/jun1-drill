@@ -12,9 +12,28 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
+<div id="err-banner" class="err-banner hidden">
+  <div>表示中に問題が起きました。読み込み直すと直ることがあります。</div>
+  <small id="err-msg"></small>
+  <button id="err-reload" class="primary">読み込み直す</button>
+</div>
+<script>
+  // 画面の準備中にエラーが起きたら、黙って一部が消えるのではなく知らせる
+  window.addEventListener('error', function (e) {
+    var b = document.getElementById('err-banner');
+    if (!b) return;
+    document.getElementById('err-msg').textContent = (e.message || 'エラー') + (e.filename ? '（' + e.filename.split('/').pop() + ':' + e.lineno + '）' : '');
+    b.classList.remove('hidden');
+  });
+  document.getElementById('err-reload').onclick = function () {
+    // 保存してある古いファイルを捨ててから読み込み直す（学習記録は消えない）
+    var go = function () { location.reload(); };
+    if (window.caches) caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }).then(go, go); else go();
+  };
+</script>
 <div id="app">
   <!-- ホーム -->
   <section id="view-home" class="view">
@@ -229,9 +248,9 @@
     </div>
   </section>
 </div>
-<script src="words.js"></script>
-<script src="srs.js"></script>
-<script src="push-config.js"></script>
-<script src="app.js"></script>
+<script src="words.js?v=10"></script>
+<script src="srs.js?v=10"></script>
+<script src="push-config.js?v=10"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

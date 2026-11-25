@@ -1,18 +1,23 @@
 // オフラインでも開けるようにファイルを保存しておく ＋ 毎日の通知を表示する
-const CACHE = 'jun1-drill-v9';
+const CACHE = 'jun1-drill-v10';
 const FILES = ['./', './index.html', './style.css', './app.js', './srs.js', './push-config.js', './words.js', './manifest.json', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // ブラウザの一時保存（HTTPキャッシュ）を通さず、必ず最新のファイルを取りに行く
+  e.waitUntil(caches.open(CACHE)
+    .then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
-// ネット優先・つながらなければ保存分を使う（更新がすぐ反映されるように）
+// ネット優先・つながらなければ保存分を使う。
+// 同じサイトのファイルは毎回サーバーに「更新されたか」を確認する（古いファイルと新しいファイルが混ざらないように）
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const sameOrigin = new URL(e.request.url).origin === self.location.origin;
   e.respondWith(
-    fetch(e.request).then((res) => {
+    fetch(e.request, sameOrigin ? { cache: 'no-cache' } : undefined).then((res) => {
       const copy = res.clone();
       caches.open(CACHE).then((c) => c.put(e.request, copy));
       return res;
